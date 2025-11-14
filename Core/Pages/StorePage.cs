@@ -2,7 +2,7 @@
 using System.Threading;
 
 
-namespace Core
+namespace Core.Pages
 {
     public class StorePage
     {

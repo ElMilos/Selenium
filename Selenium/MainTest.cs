@@ -1,26 +1,30 @@
 ﻿using Core;
 using OpenQA.Selenium;
-using Selen.Pages;
+using Core.Pages;
 
-
-namespace Selen
+namespace Tests
 {
     [TestClass]
     public sealed class MainTest
     {
-        private IWebDriver driver;
+        private IWebDriver? driver;
 
-
-        private void Setup(string webDriver)
+        [TestInitialize]
+        public void Setup()
         {
-            Enum.TryParse(webDriver, true, out DriverType type);
+            string? browser = Config.Configuration["Browser:Chrome"];
+            string? url = Config.Configuration["Urls:Url"];
+
+            Enum.TryParse(browser, true, out DriverType type);
 
             DriverManager.Instance.InitDriver(type);
             driver = DriverManager.Instance.Driver;
 
-            driver.Navigate().GoToUrl("https://www.saucedemo.com/");
-        }
+            if (url is null)
+                throw new InvalidOperationException("BaseUrl is missing in configuration.");
 
+            driver.Navigate().GoToUrl(url);
+        }
 
         [TestCleanup]
         public void TestCleanup()
@@ -29,55 +33,55 @@ namespace Selen
         }
 
 
-        [DataTestMethod]
-        [DataRow("chrome")]
-        [DataRow("edge")]
-        public void UC1(string webDriver)
+        [TestMethod]
+        public void Login_NoUsername_ShowsUsernameRequiredMessage()
         {
-            Setup(webDriver);
-
             var login = new LoginPage(driver);
 
             login.EnterPassword("smth");
             login.ClearPassword();
             login.ClickLogin();
 
-            Assert.IsTrue(login.GetErrorText()
-                .Contains("Epic sadface: Username is required"));
+            Assert.IsTrue(
+                login.GetErrorText().Contains("Username is required"),
+                "Expected username required message."
+            );
         }
 
-        [DataTestMethod]
-        [DataRow("chrome")]
-        [DataRow("edge")]
-        public void UC2(string webDriver)
-        {
-            Setup(webDriver);
 
+        [TestMethod]
+        public void Login_NoPassword_ShowsPasswordRequiredMessage()
+        {
             var login = new LoginPage(driver);
 
             login.EnterUsername("smth");
             login.ClickLogin();
 
-            Assert.IsTrue(login.GetErrorText()
-                .Contains("Epic sadface: Password is required"));
+            Assert.IsTrue(
+                login.GetErrorText().Contains("Password is required"),
+                "Expected password required message."
+            );
         }
 
-        [DataTestMethod]
-        [DataRow("chrome")]
-        [DataRow("edge")]
-        public void UC3(string webDriver)
-        {
-            Setup(webDriver);
 
+        [TestMethod]
+        public void Login_ValidCredentials_NavigatesToInventory()
+        {
             var login = new LoginPage(driver);
-            login.EnterUsername("standard_user");
-            login.EnterPassword("secret_sauce");
+
+            var username = Config.Configuration["Credentials:Username"];
+            var password = Config.Configuration["Credentials:Password"];
+
+            login.EnterUsername(username);
+            login.EnterPassword(password);
             login.ClickLogin();
 
             var inventory = new StorePage(driver);
 
-            Assert.IsTrue(inventory.GetLogoText()
-                .Contains("Swag Labs"));
+            Assert.IsTrue(
+                inventory.GetLogoText().Contains("Swag Labs"),
+                "Inventory page logo text mismatch."
+            );
         }
     }
 }
